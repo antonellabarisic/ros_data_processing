@@ -42,9 +42,23 @@ class ImageFlipper(object):
         if self._pub.get_num_connections() > 0 or self._compressed_pub.get_num_connections() > 0:
             cv2_img = self._cv_bridge.imgmsg_to_cv2(image)
             flipped = cv2.flip(cv2_img, self._flip_mode)
-
-            out_img_msg = self._cv_bridge.cv2_to_imgmsg(flipped,
-                                                encoding='rgb8')
+            # check encoding
+            rospy.logwarn("Image encoding: {}".format(image.encoding))
+            if image.encoding == 'rgb8':
+                out_img_msg = self._cv_bridge.cv2_to_imgmsg(flipped,
+                                            encoding='rgb8')
+            elif image.encoding == 'bgr8':
+                out_img_msg = self._cv_bridge.cv2_to_imgmsg(flipped,
+                                            encoding='rgb8')
+            elif image.encoding == 'mono16':
+                out_img_msg = self._cv_bridge.cv2_to_imgmsg(flipped,
+                                            encoding='mono16')
+            elif image.encoding == '16UC1':
+                out_img_msg = self._cv_bridge.cv2_to_imgmsg(flipped,
+                                            encoding='mono16')
+            else:
+                rospy.logwarn("Image encoding not supported, got: {}".format(
+                    image.encoding))
             out_img_msg.header = image.header
             if self._pub.get_num_connections() > 0:
                 self._pub.publish(out_img_msg)
