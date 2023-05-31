@@ -11,18 +11,19 @@ from cv_bridge import CvBridge, CvBridgeError
 Flip an image stream.
 
 Author: sam.pfeiffer at conigital.com
+        Antonella Barisic at UNIZG-FER
 """
 
 
 class ImageFlipper(object):
-    def __init__(self, flip_mode, queue_size=10):
+    def __init__(self, flip_mode, image_topic, queue_size=10):
         """
         flip_mode int: opencv flip mode, 0 == horizontal, 1 == vertical, -1 both
         """
         self._flip_mode = flip_mode
         self._cv_bridge = CvBridge()
         self._initialized = False
-        self._sub = rospy.Subscriber("image", Image, self._image_cb,
+        self._sub = rospy.Subscriber(image_topic, Image, self._image_cb,
                                      queue_size=queue_size)
         output_topic = self._sub.resolved_name + '_flipped'
         self._pub = rospy.Publisher(output_topic, Image,
@@ -41,8 +42,9 @@ class ImageFlipper(object):
         if self._pub.get_num_connections() > 0 or self._compressed_pub.get_num_connections() > 0:
             cv2_img = self._cv_bridge.imgmsg_to_cv2(image)
             flipped = cv2.flip(cv2_img, self._flip_mode)
+
             out_img_msg = self._cv_bridge.cv2_to_imgmsg(flipped,
-                                                        encoding='bgr8')
+                                                encoding='rgb8')
             out_img_msg.header = image.header
             if self._pub.get_num_connections() > 0:
                 self._pub.publish(out_img_msg)
@@ -56,8 +58,13 @@ class ImageFlipper(object):
 if __name__ == '__main__':
     rospy.init_node('image_flipper', anonymous=True)
     argv = rospy.myargv(sys.argv)
-    if len(argv) > 1:
+
+    if len(argv) > 2:
         flip_mode = argv[1]
+        image_topic = argv[2]
+    elif len(argv) > 1:
+        flip_mode = argv[1]
+        image_topic = "/camera/image_raw"
     else:
         raise RuntimeError(
             "{} requires argument to flip 'horizontal', 'vertical', or 'both'".format(argv[0]))
@@ -73,5 +80,5 @@ if __name__ == '__main__':
     else:
         raise RuntimeError(
             "Expected argument to flip 'horizontal', 'vertical', or 'both', got: {}".format(flip_mode))
-    ImageFlipper(flip_mode_num)
+    ImageFlipper(flip_mode_num, image_topic)
     rospy.spin()
