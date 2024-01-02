@@ -1,0 +1,18 @@
+<launch>
+    <arg name="video_path" default="/home/antonella/ros/catkin_ws/src/ros_data_processing/data/DJI_0018.MP4"/>
+    <arg name="rate" default="30"/>
+    <arg name="new_topic_name" default="/camera/image_raw"/>
+    <arg name="compress" default="true"/>
+    <arg name="bagfile_prefix" default="DJI_0018"/>
+
+    <!-- Node for video publisher -->
+    <node name="video_publisher" pkg="ros_data_processing" type="mp4_to_bag.py" output="screen">
+        <param name="video_path" value="$(arg video_path)"/>
+        <param name="rate" value="$(arg rate)"/>
+        <param name="new_topic_name" value="$(arg new_topic_name)"/>
+        <param name="compress" value="$(arg compress)"/>
+    </node>
+
+    <!-- Node for recording the topic to a rosbag -->
+    <node name="record" pkg="rosbag" type="record" args="-O $(arg bagfile_prefix) $(arg new_topic_name) $(arg new_topic_name)/compressed" output="screen"/>
+</launch>
