@@ -1,61 +1,39 @@
 #!/usr/bin/env python3
-
-import rospy
-from sensor_msgs.msg import Image
-from cv_bridge import CvBridge, CvBridgeError
+import rosbag
 import cv2
+from cv_bridge import CvBridge
 import os
-import time
 
-class ImageSaver:
-    def __init__(self):
-        self.bridge = CvBridge()
-        self.image_sub = rospy.Subscriber("/hawkred/camera/color/image_raw", Image, self.callback)
-        self.destination_path = "/home/antonella/Datasets/mbzirc2024/small_large_object/images_from_bags"
-        self.save_rate = 0.5  # Save an image every 0.1 seconds
-        self.last_save_time = 0
-        self.rotate_180 = False
+def extract_images_from_rosbag(rosbag_file, output_folder, image_topic_name):
+    # Create output folder if it doesn't exist
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
 
-        if not os.path.exists(self.destination_path):
-            os.makedirs(self.destination_path)
+    # Initialize the CV bridge
+    bridge = CvBridge()
 
-        self.img_count = 0
-
-    def callback(self, data):
-        current_time = time.time()  # Get current time in seconds
-        if current_time - self.last_save_time >= self.save_rate:
+    idx = 0
+    # Open the ROS bag file
+    with rosbag.Bag(rosbag_file, 'r') as bag:
+        for topic, msg, t in bag.read_messages(topics=[image_topic_name]):
             try:
-                if self.rotate_180:
-                        cv_image = cv2.rotate(self.bridge.imgmsg_to_cv2(data, desired_encoding="bgr8"), cv2.ROTATE_180)
-                else:
-                    cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
-                # cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
-            except CvBridgeError as e:
-                print(e)
-
-            # Name image based on rospy time
-            current_ros_time = rospy.get_rostime()  # This returns a rospy.Time instance
-            ros_time_sec = current_ros_time.secs
-            ros_time_nsec = current_ros_time.nsecs
-
-            img_name = "image_{}_{}.png".format(ros_time_sec, ros_time_nsec)
-
-            cv2.imwrite(os.path.join(self.destination_path, img_name), cv_image)
-            self.img_count += 1
-            self.last_save_time = current_time  # Update the last save time
-
-            print("Saved image named {}".format(img_name))
-            print("Saved image number {}".format(self.img_count))
-
-
-def main():
-    rospy.init_node('image_saver', anonymous=True)
-    image_saver = ImageSaver()
-    try:
-        rospy.spin()
-    except KeyboardInterrupt:
-        print("Shutting down")
+                if msg._type == 'sensor_msgs/Image':
+                    cv_image = bridge.imgmsg_to_cv2(msg, desired_encoding='passthrough')
+                elif msg._type == 'sensor_msgs/CompressedImage':
+                    cv_image = bridge.compressed_imgmsg_to_cv2(msg)
+                
+                # Construct the filename using the timestamp of the message
+                filename = os.path.join(output_folder, '{:04}.png'.format(idx))
+                idx += 1
+                
+                # Save the image
+                cv2.imwrite(filename, cv_image)
+                print("Saved image", filename)
+            except Exception as e:
+                print("Failed to convert and save image:", e)
 
 if __name__ == '__main__':
-    main()
-
+    rosbag_file = '/home/antonella/bags/mbzirc_nella/first_test__2024-01-18-07-54-17/red_only_epoch110.bag'
+    output_folder = '/home/antonella/bags/mbzirc_nella/first_test__2024-01-18-07-54-17/red_only_epoch110/'
+    image_topic_name = '/detected_objects/compressed'
+    extract_images_from_rosbag(rosbag_file, output_folder, image_topic_name)
