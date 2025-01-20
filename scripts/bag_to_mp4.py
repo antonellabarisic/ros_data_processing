@@ -9,6 +9,13 @@ def rosbag_to_video(rosbag_path, video_path, topic_name, fps=30):
     print("Starting ROS bag to video conversion")
     bridge = CvBridge()
     bag = rosbag.Bag(rosbag_path, "r")
+    msg_count = bag.get_message_count(topic_filters=[topic_name])
+    duration = bag.get_end_time() - bag.get_start_time()
+
+    calculated_fps = msg_count / duration
+    print(f"Message count: {msg_count}")
+    print(f"Duration: {duration}")
+    print(f"Calculated FPS: {calculated_fps}")
 
     first_frame_initialized = False
     for topic, msg, t in bag.read_messages(topics=[topic_name]):
@@ -45,9 +52,10 @@ def rosbag_to_video(rosbag_path, video_path, topic_name, fps=30):
     bag.close()
 
 if __name__ == '__main__':
-    rosbag_path = '/home/antonella/bags/red_train14_best.bag'
-    video_path = '/home/antonella/bags/red_train14_best.mp4'
-    topic_name = '/detected_objects/compressed'
+    rosbag_path = '/home/antonella/bags/red_only_epoch110.bag'
+    video_path = '/home/antonella/bags/red_only_epoch110.mp4'
+    topic_name = '/detected_objects/compressed' 
+    # topic_name = '/yolov5/image_out/compressed'
     fps = 7
 
     rosbag_to_video(rosbag_path, video_path, topic_name, fps)
